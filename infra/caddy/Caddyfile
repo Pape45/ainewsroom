@@ -1,0 +1,30 @@
+# Caddyfile (placeholder) for ainewsroom.news
+
+{
+	# Optional admin endpoint
+	# admin 0.0.0.0:2019
+}
+
+ainewsroom.news {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		# CSP tightened later once routes are known
+		Content-Security-Policy "default-src 'self'; img-src 'self' data: https:; media-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; frame-src https://www.youtube-nocookie.com;"
+	}
+
+	# App service (to be defined in docker compose)
+	reverse_proxy app:3000
+}
+
+img.ainewsroom.news {
+	reverse_proxy image-proxy:3000
+}
+
+api.ainewsroom.news {
+	reverse_proxy app:3000
+}
+
