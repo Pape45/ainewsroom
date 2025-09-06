@@ -1,0 +1,136 @@
+// Prisma schema for AI Newsroom
+// V1 tables: users, sources, items, articles, sections, citations, jobs, budgets, events
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+  REVIEWER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(ADMIN)
+  status       String   @default("active")
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Source {
+  id          String   @id @default(cuid())
+  kind        String   // rss|hn|reddit|arxiv|youtube
+  url         String
+  name        String
+  trustScore  Int      @default(5)
+  lastPullAt  DateTime?
+  active      Boolean  @default(true)
+  items       Item[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([kind])
+  @@index([url])
+}
+
+model Item {
+  id            String   @id @default(cuid())
+  sourceId      String
+  source        Source   @relation(fields: [sourceId], references: [id])
+  extId         String?
+  title         String
+  url           String
+  publishedAt   DateTime?
+  author        String?
+  raw           String?
+  cleaned       String?
+  hashTitle     String?
+  hashBody      String?
+  dedupKey      String   @unique
+  scoreFeatures Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  articles      Article[]
+  @@index([sourceId])
+  @@index([publishedAt])
+}
+
+model Article {
+  id             String           @id @default(cuid())
+  itemId         String?
+  item           Item?            @relation(fields: [itemId], references: [id])
+  slug           String           @unique
+  status         String           @default("draft") // draft|pending_review|approved|published|rejected
+  score          Float?           @default(0)
+  sectionCount   Int              @default(0)
+  heroImage      String?
+  seoTitle       String?
+  seoDescription String?
+  publishedAt    DateTime?
+  sections       ArticleSection[]
+  citations      ArticleSource[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model ArticleSection {
+  id        String  @id @default(cuid())
+  articleId String
+  article   Article @relation(fields: [articleId], references: [id])
+  idx       Int
+  heading   String?
+  bodyMd    String
+  @@index([articleId])
+}
+
+model ArticleSource {
+  id        String   @id @default(cuid())
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id])
+  claimRef  String?
+  sourceUrl String
+  confidence Float?
+  @@index([articleId])
+}
+
+model Job {
+  id        String   @id @default(cuid())
+  kind      String   // pull|score|generate|publish
+  key       String?
+  state     String   @default("queued")
+  attempts  Int      @default(0)
+  error     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([kind])
+  @@index([state])
+}
+
+model Budget {
+  id           String   @id @default(cuid())
+  provider     String
+  dailyLimit   Float    @default(5)
+  monthlyLimit Float    @default(50)
+  spentToday   Float    @default(0)
+  spentMonth   Float    @default(0)
+}
+
+model Event {
+  id        String   @id @default(cuid())
+  entity    String
+  entityId  String
+  type      String
+  payload   Json?
+  createdAt DateTime @default(now())
+  @@index([entity, entityId])
+}
+
